@@ -1,0 +1,44 @@
+
+body {
+    background-color: #fff;
+    font-family: courier, sans-serif;
+}
+
+h3 {
+    text-align: center;
+    
+}
+
+ul {
+    margin: 8px;
+    padding: 2px;
+}
+
+input[type="text"]{
+    border: thin solid #ccc;
+}
+
+#pew_canvas {
+    float: left;
+    border: thin solid #ccc;
+    cursor: crosshair;
+}
+
+#pew_options {
+    float: left;
+    margin-left: 20px;
+    width: 200px;
+    height: 600px;
+    border: thin solid #ccc;
+    background: #eee;
+}
+
+#pew_options ul {
+    font-family: sans-serif;
+    font-size: 10px;
+    list-style: none;
+}
+
+#pew_status {
+    clear: both;
+}
