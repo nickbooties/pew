@@ -1,4 +1,6 @@
-
+/*
+    pew.css - Nick Booth 2013
+*/
 body {
     background-color: #fff;
     font-family: courier, sans-serif;
@@ -41,4 +43,17 @@ input[type="text"]{
 
 #pew_status {
     clear: both;
+}
+
+#pew_debug {
+    clear: both;
+    padding-top: 5px;
+}
+
+#pew_console {
+    height: 100px;
+    width: 500px;
+    border: thin solid #ccc;
+    background-color: #000;
+    color: #0F0;
 }

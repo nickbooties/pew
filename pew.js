@@ -1,54 +1,48 @@
 /*
  * pew.js
- * Nick Booth 2012
+ * Nick Booth 2013
 */
 var canvas;
 var ctx;
 var world = new Object;
+var connection;
+var connected = false;
+var loaded = false;
+var player_name;
 
 $(document).ready(function() {
     canvas=document.getElementById('pew_canvas');
     ctx=canvas.getContext('2d');
     
-    world.walls = Array();
-    world.walls.push(new wall(new point(100,100), new point(400,400)), //walls
-                     new wall(new point(200,400), new point(200,600)), //
-                     new wall(new point(0,0), new point(0,canvas.height)), // box boundry
-                     new wall(new point(0,canvas.height), new point(canvas.width,canvas.height)), 
-                     new wall(new point(canvas.width,canvas.height), new point(canvas.width,0)),
-                     new wall(new point(canvas.width,0), new point(0,0))
-                     );
-
-    world.fighters = Array();
-    world.fighters.push(new Object({name: 'Schroder', location: new point(200,100), heading: 0}));
-    world.lasers = Array();
-    world.blasts = Array();
-    
-    world.laserSpeed = 10;
-    world.laserLength = 200;
+    /* */
     setInterval(drawLoop,10);
     
-    //input
+    //input - change these to requests to move to server
     $(document).keypress(function(event){
+        var request = {};    
+        
         switch(event.charCode) {
             case 119: //up
-                world.fighters[0].location.y -= 10;
+                request = {name: player_name, request: {type: 'move', dir: '1'}}
             break;
             case 115: //down
-                world.fighters[0].location.y += 10;
+                request = {name: player_name, request: {type: 'move', dir: '2'}}
             break;
             case 97: //left
-                world.fighters[0].location.x -= 10;
+                request = {name: player_name, request: {type: 'move', dir: '3'}}
             break;
             case 100: //right
-                world.fighters[0].location.x += 10;
+                request = {name: player_name, request: {type: 'move', dir: '4'}}
             break;
-            
+        }  
+        
+        if(connected && loaded)
+        {
+            connection.send(JSON.stringify(request));
         }
     });
     
     $('#pew_canvas').mouseup(function(event){
-        
         
         if(event.button == 0) //lmb down
         {
@@ -57,23 +51,98 @@ $(document).ready(function() {
             var target = new point(x,y);
             var heading = getHeading(world.fighters[0].location, target);
             
-            addLaser(world.fighters[0].location, heading, 1000);
+            //addLaser(world.fighters[0].location, heading, 1000);
+            var request = {name: player_name, request: {type: 'fire',target: target}};
+            
+            if(connected && loaded)
+            {
+                connection.send(JSON.stringify(request));
+            }
+        }
+    });
+    
+    $('#pew_connect').click(function(){
+        //connect to server
+        // if user is running mozilla then use it's built-in WebSocket
+        window.WebSocket = window.WebSocket || window.MozWebSocket;
+    
+        connection = new WebSocket('ws://127.0.0.1:1337');
+        connection.onopen = function () {
+            // connection is opened and ready to use
+            connected = true;
+            player_name = $('.pew_playername').val();
+            log("Connection established...");
+            var request = {
+                name: player_name,
+                request: {type: 'init'}
+            }
+            
+            connection.send(JSON.stringify(request));
+        };
+        
+        connection.onerror = function (error) {
+            // an error occurred when sending/receiving data
+            connected = false;
+            log("Connection error: "+error)
+        };
+        
+        connection.onmessage = function (message) {
+            // try to decode json (I assume that each message from server is json)
+            try {
+                var json = JSON.parse(message.data);
+                
+                if(json.error)
+                {
+                    log(json.error);
+                }
+                else
+                {
+                    switch(json.type)
+                    {
+                        case 'sync':
+                            if(json.world)
+                            {
+                                world = json.world;
+                                loaded = true;
+                            }
+                            else
+                            {
+                                log("Sync contained no world data.");
+                            }
+                        break;
+                        
+                    }
+                }
+            } catch (e) {
+                log('JSON error: '+message.data);
+                return;
+            }
+            // handle incoming message
+        };
+        
+        connection.onclose = function (e) {
+            connected = false;
+            log("Connection dropped: "+e);
         }
     });
 });
 
 function drawLoop() {
     //todo, add keycheck into draw loop
-    
-    ctx.clearRect(0,0,canvas.width, canvas.height);
-    ctx.lineWidth = 2;
-    
-    drawWalls();
-    drawFighters();
-    drawLasers();
-    drawBlasts();
-    
-    //console.log(world.lasers.length);
+    if(connected && loaded)
+    {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        
+        drawWalls();
+        drawFighters();
+        calculateLasers();
+        drawLasers();
+        drawBlasts();
+        
+        //once every 10 frames request a sync from server
+        
+    }
 }
 
 function drawWalls() {
@@ -106,73 +175,11 @@ function drawFighters() {
     }
 }
 
-function  drawLasers() {
+function drawLasers()
+{
     for(var i=0;i<world.lasers.length;i++)
     {
         var laser = world.lasers[i];
-        var nextHeadLoc;
-        
-        
-        
-        //remove laser if off screen or (end of lifespan ?).
-        if((laser.tail.x > ctx.canvas.clientWidth || laser.tail.x < 0) && (laser.tail.y > ctx.canvas.clientHeight || laser.tail.y < 0))
-        {
-            world.lasers.splice(i,1);
-        }
-        
-        //move laser head towards target
-        nextHeadLoc = getMoveCoords(world.laserSpeed,laser.head,laser.heading);  
-
-        if(!laser.inCollision)
-        {
-            //check if a collision occurs between old and new head loc
-            var collision = checkWallCollission(laser.head, nextHeadLoc);
-            if(collision && laser.movement > 0)
-            {
-                var x = collision.points[0].x;
-                var y = collision.points[0].y;
-                
-                laser.inCollision = true;
-                laser.head = collision.points[0];
-                world.blasts.push(new blast(x,y,20));
-            
-                //calculate incident angle
-                newHeading = getReflectAngle(laser.tail, collision.wallRef.from, collision.points[0]);
-                
-                //spawn new laser if old one not too old
-                if(laser.life < 1000)
-                {
-                    var n = addLaser(collision.points[0], newHeading);
-                    world.lasers[n - 1].life = laser.life;
-                }
-            }
-        }
-        
-        //need a seperat check incase it collided this move.
-        if(!laser.inCollision)
-        {
-            //only move head if not colliding
-            laser.head = nextHeadLoc;
-            laser.life++;
-            laser.movement++;
-            //if dist between head & tail < laserlength, only move head of laser, otherwise move tail too.
-            if(getDist(laser.head, laser.tail) >= world.laserLength)
-            {
-                laser.tail = getMoveCoords(world.laserSpeed, laser.tail, laser.heading);
-            }
-        }
-        else
-        {
-            //check if laser length is small enough to remove laser
-            if(getDist(laser.head, laser.tail) <= 5)
-            {
-                world.lasers.splice(i,1);
-            }
-            
-            laser.tail = getMoveCoords(world.laserSpeed, laser.tail, laser.heading);
-        }
-        
-        
         //does the draw
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -202,13 +209,12 @@ function drawBlasts() {
     }
 }
 
-function addLaser(source,heading) {
+function log(text) {
+    var console = $('#pew_console');
     
-    var sourceCopy = jQuery.extend(true, {}, source);
-    
-    return world.lasers.push(new laser(heading, sourceCopy)); 
+    $('#pew_console').append(text+"\r\n");    
+    $('#pew_console').scrollTop(console[0].scrollHeight);
 }
-
 
 
 

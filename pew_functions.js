@@ -1,5 +1,6 @@
 /*
- pew functions */
+ pew functions - Nick Booth 2013
+ */
 
 function point(x,y) {
     this.x = x;
@@ -98,4 +99,82 @@ function checkWallCollission(from, to) {
     return false;
 }
 
+function fighter(a_name, a_loc, a_head)
+{
+    this.name = a_name;
+    this.location = new point(a_loc.x, a_loc.y);
+    this.heading = a_head;
+}
 
+function addLaser(source,heading) {
+    
+    var sourceCopy = jQuery.extend(true, {}, source);
+    
+    return world.lasers.push(new laser(heading, sourceCopy)); 
+}
+
+function  calculateLasers() {
+    for(var i=0;i<world.lasers.length;i++)
+    {
+        var laser = world.lasers[i];
+        var nextHeadLoc;
+        
+        //remove laser if off screen or (end of lifespan ?).
+        if((laser.tail.x > world.width || laser.tail.x < 0) && (laser.tail.y > world.height || laser.tail.y < 0))
+        {
+            world.lasers.splice(i,1);
+        }
+        
+        //move laser head towards target
+        nextHeadLoc = getMoveCoords(world.laserSpeed,laser.head,laser.heading);  
+
+        if(!laser.inCollision)
+        {
+            //check if a collision occurs between old and new head loc
+            var collision = checkWallCollission(laser.head, nextHeadLoc);
+            if(collision && laser.movement > 0)
+            {
+                var x = collision.points[0].x;
+                var y = collision.points[0].y;
+                
+                laser.inCollision = true;
+                laser.head = collision.points[0];
+                world.blasts.push(new blast(x,y,20));
+            
+                //calculate incident angle
+                newHeading = getReflectAngle(laser.tail, collision.wallRef.from, collision.points[0]);
+                
+                //spawn new laser if old one not too old
+                if(laser.life < 1000)
+                {
+                    var n = addLaser(collision.points[0], newHeading);
+                    world.lasers[n - 1].life = laser.life;
+                }
+            }
+        }
+        
+        //need a seperat check incase it collided this move.
+        if(!laser.inCollision)
+        {
+            //only move head if not colliding
+            laser.head = nextHeadLoc;
+            laser.life++;
+            laser.movement++;
+            //if dist between head & tail < laserlength, only move head of laser, otherwise move tail too.
+            if(getDist(laser.head, laser.tail) >= world.laserLength)
+            {
+                laser.tail = getMoveCoords(world.laserSpeed, laser.tail, laser.heading);
+            }
+        }
+        else
+        {
+            //check if laser length is small enough to remove laser
+            if(getDist(laser.head, laser.tail) <= 5)
+            {
+                world.lasers.splice(i,1);
+            }
+            
+            laser.tail = getMoveCoords(world.laserSpeed, laser.tail, laser.heading);
+        }
+    }
+}
