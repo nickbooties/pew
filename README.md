@@ -1,4 +1,9 @@
-pew
+PEW = Photon Emitting Weapons
 ===
 
-Pew Javascript multiplayer laser battles.
+Javascript multiplayer laser battles.
+
+Requirements:
+Nodejs
+  - jquery
+  - websocket
