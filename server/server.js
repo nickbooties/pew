@@ -94,6 +94,11 @@ wsServer.on('request', function(request) {
                         if(x >= 0)
                         {
                             var heading = getHeading(world.fighters[x].location, m_req.request.target);
+                            
+                            //turn the player
+                            world.fighters[x].heading = heading;
+                            
+                            //send it!
                             addLaser(world.fighters[x].location, heading);
                             console.log('added laser');
                         }

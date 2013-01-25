@@ -29,6 +29,13 @@ function laser(heading, source) {
    
 }
 
+function fighter(a_name, a_loc, a_head)
+{
+    this.name = a_name;
+    this.location = new point(a_loc.x, a_loc.y);
+    this.heading = a_head;
+}
+
 function getDist(from, to)
 {
     var xs = 0;
@@ -97,13 +104,6 @@ function checkWallCollission(from, to) {
     }
     
     return false;
-}
-
-function fighter(a_name, a_loc, a_head)
-{
-    this.name = a_name;
-    this.location = new point(a_loc.x, a_loc.y);
-    this.heading = a_head;
 }
 
 function addLaser(source,heading) {

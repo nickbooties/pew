@@ -131,7 +131,29 @@ function drawLoop() {
     //todo, add keycheck into draw loop
     if(connected && loaded)
     {
-        ctx.clearRect(0,0,canvas.width, canvas.height);
+        //draw the floor
+        ctx.fillRect(0,0,world.width, world.height);
+        
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = '#040';
+        
+        for(var x=0; x<world.width;x+=20)
+        {
+            ctx.beginPath();
+            ctx.moveTo(x+.5, 0);
+            ctx.lineTo(x+.5, world.height);
+            ctx.stroke();
+            
+        }
+        
+        for(var y=0; y<world.height;y+=20)
+        {
+            ctx.beginPath();
+            ctx.moveTo(0, y+.5);
+            ctx.lineTo(world.width, y+.5);
+            ctx.stroke();
+        }
+        
         ctx.lineWidth = 2;
         
         drawWalls();
@@ -139,7 +161,6 @@ function drawLoop() {
         calculateLasers();
         drawLasers();
         drawBlasts();
-        
         //once every 10 frames request a sync from server
         
     }
@@ -154,7 +175,9 @@ function drawWalls() {
         ctx.beginPath();
         ctx.moveTo(currentWall.from.x, currentWall.from.y);
         ctx.lineTo(currentWall.to.x, currentWall.to.y);
+        ctx.strokeStyle="#CCC";
         ctx.stroke();
+        ctx.strokeStyle="#000";
     }
 }
 
@@ -162,16 +185,14 @@ function drawFighters() {
     for(var x=0;x<world.fighters.length;x++)
     {
         var fighter = world.fighters[x];
-        
-        ctx.lineWidth = 1;
-        
-        ctx.beginPath();
-        ctx.moveTo(fighter.location.x - 5, fighter.location.y + 5);
-        ctx.lineTo(fighter.location.x, fighter.location.y - 5);
-        ctx.lineTo(fighter.location.x + 5, fighter.location.y + 5);
-        ctx.lineJoin = "miter";
-        ctx.stroke();
-        
+        var imageObj = new Image();
+        imageObj.src = 'art/player.png';
+
+        ctx.translate(fighter.location.x, fighter.location.y);
+        ctx.rotate(fighter.heading -(3.14/2));
+        ctx.drawImage(imageObj, -16, -16);
+        ctx.rotate(-(fighter.heading-(3.14/2)));
+        ctx.translate(-fighter.location.x, -fighter.location.y);
     }
 }
 
@@ -186,7 +207,14 @@ function drawLasers()
         ctx.moveTo(laser.tail.x, laser.tail.y);
         ctx.lineTo(laser.head.x, laser.head.y);
         ctx.lineJoin = "miter";
+        
+        var gradient=ctx.createLinearGradient(laser.tail.x,laser.tail.y,laser.head.x,laser.head.y);
+        gradient.addColorStop("0","rgba(0,0,0,0)");
+        gradient.addColorStop("1.0","yellow");
+        
+        ctx.strokeStyle=gradient;
         ctx.stroke();
+        ctx.strokeStyle="#000";
     }
 }
 
@@ -199,7 +227,9 @@ function drawBlasts() {
         {
             ctx.beginPath();
             ctx.arc(blast.location.x,blast.location.y,blast.size,0,2*Math.PI);
+            ctx.strokeStyle="#FF3300";
             ctx.stroke();
+            ctx.strokeStyle="#000";
             blast.size--;
         }
         else
