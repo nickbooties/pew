@@ -20,6 +20,14 @@
                 </ul>
                 <br/>
                 <button id='pew_connect'>Connect</button>
+                <br/>
+                
+                <div class='pew_scoreboard'>
+                <h3>Scoreboard:</h3>
+                    <ul>
+                        
+                    </ul>
+                </div>
             </div>
             <div id='pew_debug'><textarea id='pew_console'>pew://</textarea></div>
         </body>

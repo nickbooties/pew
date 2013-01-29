@@ -104,6 +104,14 @@ $(document).ready(function() {
                             {
                                 world = json.world;
                                 loaded = true;
+                                
+                                //update scoreboard
+                                $('.pew_scoreboard ul').empty();
+                                for(var i=0;i<world.fighters.length;i++)
+                                {
+                                    var f = world.fighters[i];
+                                    $('.pew_scoreboard ul').append("<li>"+f.name+": "+f.kills+"</li>");
+                                }
                             }
                             else
                             {
@@ -186,7 +194,14 @@ function drawFighters() {
     {
         var fighter = world.fighters[x];
         var imageObj = new Image();
-        imageObj.src = 'art/player.png';
+        if(fighter.alive)
+        {
+            imageObj.src = 'art/player.png';
+        }
+        else
+        {
+            imageObj.src = 'art/death.png';
+        }
 
         ctx.translate(fighter.location.x, fighter.location.y);
         ctx.rotate(fighter.heading -(3.14/2));

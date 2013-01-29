@@ -4,13 +4,13 @@
 
 var WebSocketServer = require('websocket').server;
 var http = require('http');
-var world = new Object;
-
 var $ = require('jquery');
 var jQuery = $;
 var fs = require('fs');
 eval(fs.readFileSync('../intersection.js')+'');
 eval(fs.readFileSync('../pew_functions.js')+'');
+
+var world = new Object;
 
 loadWorld();
 setInterval(syncLoop,100);
@@ -31,7 +31,7 @@ wsServer = new WebSocketServer({
 wsServer.on('request', function(request) {
     var connection = request.accept(null, request.origin);
 
-    console.log('Recieved connection from: '+request.origin);
+    console.log('Recieved connection from: '+request.remoteAddress);
     
     // This is the most important callback for us, we'll handle
     // all messages from users here.
@@ -44,65 +44,76 @@ wsServer.on('request', function(request) {
             
             if(m_req.name != '')
             {
-                console.log(message.utf8Data);
-                switch(m_req.request.type)
+                //console.log(message.utf8Data);
+                try
                 {
-                    case 'init':
-                        //check if name already exists
-                        if(validPlayer(m_req.name) == -1)
-                        {
-                            world.fighters.push(new fighter(m_req.name,new point(200,100), 0));
-                            reply = { type: 'sync', world: world}
-                        }
-                        else
-                        {
-                            reply = {error: 'Player already exists.'}
-                        }
-                    break;
-                    case 'sync':
-                        reply = { type: 'sync', world: world}
-                    break;
-                    case 'move':
-                        //validate move,player
-                        var x = validPlayer(m_req.name)
-                        if(x >= 0)
-                        {
-                            switch(m_req.request.dir)
+                    switch(m_req.request.type)
+                    {
+                        case 'init':
+                            //check if name already exists
+                            if(validPlayer(m_req.name) == -1)
                             {
-                                case '1':
-                                    world.fighters[x].location.y -= 10;
-                                break;
-                                case '2':
-                                    world.fighters[x].location.y += 10;
-                                break;
-                                case '3':
-                                    world.fighters[x].location.x -= 10;
-                                break;
-                                case '4':
-                                    world.fighters[x].location.x += 10;
-                                break;
+                                world.fighters.push(new fighter(m_req.name,new point(200,100), 0));
+                                reply = {type: 'sync', world: world}
+                                this.pew_playerName = m_req.name;
+                                console.log("There are now "+wsServer.connections.length+" connections.");
                             }
-                        }
-                        //update player
-                        //send sync
-                        reply = {type: 'sync', world: world}
-                    break;
-                
-                    case 'fire':
-                        var x = validPlayer(m_req.name)
-                        
-                        if(x >= 0)
-                        {
-                            var heading = getHeading(world.fighters[x].location, m_req.request.target);
+                            else
+                            {
+                                reply = {error: 'Player already exists.'}
+                                this.close();
+                            }
+                        break;
+                        case 'sync':
+                            reply = { type: 'sync', world: world}
+                        break;
+                        case 'move':
+                            //validate move,player
+                            var x = validPlayer(m_req.name)
+                            if(x >= 0 && world.fighters[x].alive)
+                            {
+                                switch(m_req.request.dir)
+                                {
+                                    case '1':
+                                        world.fighters[x].location.y -= 10;
+                                    break;
+                                    case '2':
+                                        world.fighters[x].location.y += 10;
+                                    break;
+                                    case '3':
+                                        world.fighters[x].location.x -= 10;
+                                    break;
+                                    case '4':
+                                        world.fighters[x].location.x += 10;
+                                    break;
+                                }
+                            }
+                            //update player
+                            //send sync
+                            reply = {type: 'sync', world: world}
+                        break;
+                    
+                        case 'fire':
+                            var x = validPlayer(m_req.name)
                             
-                            //turn the player
-                            world.fighters[x].heading = heading;
-                            
-                            //send it!
-                            addLaser(world.fighters[x].location, heading);
-                            console.log('added laser');
-                        }
-                    break;
+                            if(world.fighters[x].alive && x >= 0)
+                            {
+                                var heading = getHeading(world.fighters[x].location, m_req.request.target);
+                                
+                                //turn the player
+                                world.fighters[x].heading = heading;
+                                
+                                //send it!
+                                var i = addLaser(world.fighters[x].location, heading);
+                                world.lasers[i-1].owner = world.fighters[x].name;
+                                console.log('added laser');
+                            }
+                        break;
+                    }
+                }
+                catch (err)
+                {
+                    
                 }
             }
             else
@@ -114,9 +125,21 @@ wsServer.on('request', function(request) {
         }
     });
 
-    connection.on('close', function(connection) {
-        
-        // close user connection
+    connection.on('close', function(reasonCode, description) {
+        //remove player from world
+        console.log('Player: '+this.pew_playerName+" disconnected.");
+        for(var i=0;i<world.fighters.length;i++)
+        {
+            var fighter = world.fighters[i];
+            if(fighter.name == this.pew_playerName)
+            {
+                world.fighters.splice(i,1);
+            }
+        }
+    });
+    
+    connection.on('error',function(e){
+        console.log(e);
     });
 });
 

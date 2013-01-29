@@ -26,6 +26,7 @@ function laser(heading, source) {
     this.life = 0
     this.movement = 0;
     this.inCollision = false;
+    this.owner = "";
    
 }
 
@@ -34,6 +35,8 @@ function fighter(a_name, a_loc, a_head)
     this.name = a_name;
     this.location = new point(a_loc.x, a_loc.y);
     this.heading = a_head;
+    this.kills = 0;
+    this.alive = true;
 }
 
 function getDist(from, to)
@@ -106,6 +109,35 @@ function checkWallCollission(from, to) {
     return false;
 }
 
+function checkPlayerCollision(laser,to)
+{
+    //simply check if the distance between to and player < 10 (kill radius)
+    for(var i=0;i<world.fighters.length;i++)
+    {
+        if(world.fighters[i].alive && laser.life > 10 && getDist(world.fighters[i].location,to) < 10 )
+        {
+            world.fighters[i].alive = false;
+            console.log("Player: "+world.fighters[i].name+" dies.");
+            
+            //award kill to owner (unless it was self-kill, in which case punish)
+            if(world.fighters[i].name == laser.owner)
+            {
+                world.fighters[i].kills--;
+            }
+            else
+            {
+                for(var j=0;j<world.fighters.length;j++)
+                {
+                    if(world.fighters[j].name == laser.owner)
+                    {
+                        world.fighters[j].kills++;
+                    }
+                }
+            }
+        }
+    }
+}
+
 function addLaser(source,heading) {
     
     var sourceCopy = jQuery.extend(true, {}, source);
@@ -149,11 +181,16 @@ function  calculateLasers() {
                 {
                     var n = addLaser(collision.points[0], newHeading);
                     world.lasers[n - 1].life = laser.life;
+                    world.lasers[n - 1].owner = laser.owner;
                 }
             }
+            
+            //check if it collided with a fighter
+            collision = checkPlayerCollision(laser,nextHeadLoc);
+            
         }
         
-        //need a seperat check incase it collided this move.
+        //need a seperate check incase it collided this move.
         if(!laser.inCollision)
         {
             //only move head if not colliding
